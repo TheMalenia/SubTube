@@ -32,7 +32,7 @@ class VideoViewSet(viewsets.ModelViewSet):
             return [permissions.IsAdminUser()]
         return [permissions.IsAuthenticated()]
 
-    @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated])
+    @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated], name="accessible_videos")
     def accessible_videos(self, request):
         user = request.user
         subscription = Subscription.objects.filter(user=user, end_date__gt=timezone.now()).first()
@@ -41,8 +41,28 @@ class VideoViewSet(viewsets.ModelViewSet):
             videos = Video.objects.filter(subscription_type=subscription.subscription_type)
             serializer = VideoSerializer(videos, many=True)
             return Response(serializer.data)
-        return Response({'error': 'Subscription required to access videos.'}, status=status.HTTP_403_FORBIDDEN)
+        
+        if user.renewal:
+            subscription_type = Subscription.objects.filter(user=user).first().subscription_type
+            price = subscription_type.price
+            if user.wallet < subscription_type.price:
+                return Response({'error': 'You need a charge for renewal.'}, status=status.HTTP_403_FORBIDDEN)
+            user.wallet -= subscription_type.price
+            user.save()
+            
+            subscription = Subscription.objects.create(
+                user=user,
+                subscription_type=subscription_type,
+                start_date=timezone.now(),
+                end_date=timezone.now() + timedelta(days=subscription_type.time)
+            )
 
+            videos = Video.objects.filter(subscription_type=subscription.subscription_type)
+            serializer = VideoSerializer(videos, many=True)
+            return Response(serializer.data)
+        
+        return Response({'error': 'Subscription required to access videos.'}, status=status.HTTP_403_FORBIDDEN)
+    
     @action(detail=True, methods=['get'], permission_classes=[permissions.IsAuthenticated])
     def watch_video(self, request, pk=None):
         user = request.user
@@ -50,7 +70,22 @@ class VideoViewSet(viewsets.ModelViewSet):
 
         subscription = Subscription.objects.filter(user=user, end_date__gt=timezone.now()).first()
         if not subscription:
-            return Response({'error': 'You need a valid subscription to watch videos.'}, status=status.HTTP_403_FORBIDDEN)
+            if user.renewal:
+                subscription_type = Subscription.objects.filter(user=user).first().subscription_type
+                price = subscription_type.price
+                if user.wallet < subscription_type.price:
+                    return Response({'error': 'You need a charge for renewal.'}, status=status.HTTP_403_FORBIDDEN)
+                user.wallet -= subscription_type.price
+                user.save()
+                
+                subscription = Subscription.objects.create(
+                    user=user,
+                    subscription_type=subscription_type,
+                    start_date=timezone.now(),
+                    end_date=timezone.now() + timedelta(days=subscription_type.time)
+                )
+            else:
+                return Response({'error': 'You need a valid subscription to watch videos.'}, status=status.HTTP_403_FORBIDDEN)
         
         videos = Video.objects.filter(subscription_type=subscription.subscription_type)
         if video not in videos:
@@ -60,6 +95,9 @@ class VideoViewSet(viewsets.ModelViewSet):
         if not history:
             History.objects.create(user=user, video=video)
 
+        video.view += 1
+        video.save()
+        
         serializer = VideoSerializer(video)
         return Response(serializer.data)
 
@@ -94,7 +132,7 @@ class SubscriptionViewSet(viewsets.ModelViewSet):
             user=user,
             subscription_type=subscription_type,
             start_date=timezone.now(),
-            end_date=timezone.now() + timedelta(days=30)
+            end_date=timezone.now() + timedelta(days=subscription_type.time)
         )
 
         serializer = SubscriptionSerializer(subscription)
