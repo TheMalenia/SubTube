@@ -4,8 +4,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.authtoken.models import Token
 from rest_framework.decorators import action
-from .models import User, Video, SubscriptionType, Subscription, History
-from .serializers import UserSerializer, VideoSerializer, SubscriptionSerializer, SubscriptionTypeSerializer, HistorySerializer, SignUpSerializer
+from .models import User, Video, SubscriptionType, Subscription, History, Comment
+from .serializers import UserSerializer, VideoSerializer, SubscriptionSerializer, SubscriptionTypeSerializer, HistorySerializer, SignUpSerializer, CommentSerializer
 from django.utils import timezone
 from datetime import timedelta
 from rest_framework.permissions import AllowAny
@@ -97,16 +97,39 @@ class VideoViewSet(viewsets.ModelViewSet):
 
         video.view += 1
         video.save()
-        
+
         serializer = VideoSerializer(video)
         return Response(serializer.data)
 
+class CommentViewSet(viewsets.ModelViewSet):
+    queryset = Comment.objects.all()
+    serializer_class = CommentSerializer
+    
+    def get_permissions(self):
+        if self.request.method in ['GET', 'PUT', 'DELETE']:
+            return [permissions.IsAdminUser()]
+        return [permissions.IsAuthenticated()]
+    
+    def post(self, request):
+
+        video = Video.objects.get(id=request.data.get('video'))
+        user = request.user
+        text = request.data.get('description')
+        comment = Comment.objects.create(
+            user=user,
+            video=video,
+            description=text
+        )
+            
+        serializer = CommentSerializer(comment)
+        return HttpResponse(serializer.data)
+            
 class SubscriptionTypeViewSet(viewsets.ModelViewSet):
     queryset = SubscriptionType.objects.all()
     serializer_class = SubscriptionTypeSerializer
 
     def get_permissions(self):
-        if self.request.method in ['POST', 'PUT', 'DELETE']:
+        if self.request.method in ['GET', 'PUT', 'DELETE']:
             return [permissions.IsAdminUser()]
         return [permissions.IsAuthenticated()]
 

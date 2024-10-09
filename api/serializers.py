@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User, Video, SubscriptionType, Subscription, History
+from .models import User, Video, SubscriptionType, Subscription, History, Comment
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from rest_framework.validators import UniqueValidator
@@ -13,6 +13,11 @@ class VideoSerializer(serializers.ModelSerializer):
     class Meta:
         model = Video
         fields = '__all__'
+
+class CommentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Comment
+        fields = ['user', 'video', 'description']
 
 class SubscriptionTypeSerializer(serializers.ModelSerializer):
     class Meta:

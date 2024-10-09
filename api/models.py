@@ -36,11 +36,10 @@ class Comment(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        if self.patient and self.patient.user:
-            return f"{self.user.username} to {self.video.title}"
+        return f"{self.user.username} to {self.video.title}"
         
 class Subscription(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=False)
     subscription_type = models.ForeignKey(SubscriptionType, on_delete=models.CASCADE)
     start_date = models.DateTimeField(auto_now_add=True)
     end_date = models.DateTimeField()
