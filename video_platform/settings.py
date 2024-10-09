@@ -139,3 +139,8 @@ REST_FRAMEWORK = {
 
 AUTH_USER_MODEL = 'api.User'
 
+import os
+
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media/')
+
+MEDIA_URL = '/media/'

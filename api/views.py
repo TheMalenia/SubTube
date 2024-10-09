@@ -26,11 +26,7 @@ class UserViewSet(viewsets.ModelViewSet):
 class VideoViewSet(viewsets.ModelViewSet):
     queryset = Video.objects.all()
     serializer_class = VideoSerializer
-
-    def get_permissions(self):
-        if self.request.method in ['POST', 'PUT', 'DELETE']:
-            return [permissions.IsAdminUser()]
-        return [permissions.IsAuthenticated()]
+    permission_classes = [permissions.IsAdminUser]
 
     @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated], name="accessible_videos")
     def accessible_videos(self, request):
@@ -129,7 +125,7 @@ class SubscriptionTypeViewSet(viewsets.ModelViewSet):
     serializer_class = SubscriptionTypeSerializer
 
     def get_permissions(self):
-        if self.request.method in ['GET', 'PUT', 'DELETE']:
+        if self.request.method in ['POST', 'PUT', 'DELETE']:
             return [permissions.IsAdminUser()]
         return [permissions.IsAuthenticated()]
 
@@ -164,8 +160,12 @@ class SubscriptionViewSet(viewsets.ModelViewSet):
 class HistoryViewSet(viewsets.ModelViewSet):
     queryset = History.objects.all()
     serializer_class = HistorySerializer
-    permission_classes = [permissions.IsAuthenticated]
 
+    def get_permissions(self):
+        if self.request.method in ['POST', 'PUT', 'DELETE']:
+            return [permissions.IsAdminUser()]
+        return [permissions.IsAuthenticated()]
+    
     def get_queryset(self):
         return History.objects.filter(user=self.request.user)
     
